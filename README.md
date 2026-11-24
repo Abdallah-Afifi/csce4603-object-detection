@@ -1,22 +1,47 @@
 # Object Detection from Scratch (CSCE 4603, Fall 2026, Option 4)
 
+[![tests](https://github.com/Abdallah-Afifi/csce4603-object-detection/actions/workflows/tests.yml/badge.svg)](https://github.com/Abdallah-Afifi/csce4603-object-detection/actions/workflows/tests.yml)
+
 A CNN detector for **person, car, bicycle, motorbike and bus**, built in PyTorch and trained
 from random initialisation on PASCAL VOC. It does not use pretrained weights or ready-made detectors.
-The model is a ResNet-style backbone with an upsampling neck and CenterNet-style heads (heatmap, box size, offset).
 
 **Team:** Mariam Abdelaal (data), Abdallah Afifi (model & training), Youssef Badawy (prediction & evaluation)
+
+- [Project plan](docs/project_plan.md): goal, pipeline, data, evaluation, who does what
+- [Tasks and checkpoint checklist](docs/tasks.md)
+- [Training guide](docs/training.md): how the model works, how to train, how to load weights
+
+## Pipeline
+
+```
+image 384x384 ─► Backbone (ResNet-18-style, from scratch) ─► Upsampling neck (FPN-style) ─► Heads
+                  C2..C5 at strides 4..32                     P2 at stride 4 (96x96)        heatmap 5x96x96  (object centres)
+                                                                                            wh      2x96x96  (box size)
+                                                                                            offset  2x96x96  (sub-cell centre)
+decode: 3x3 max-pool peaks ─► top-100 ─► boxes ─► draw on image / video
+```
+
+Comparison baseline: the same backbone and neck with a YOLO-v1-style **grid head** (24×24 cells, one box per cell).
 
 ## Layout
 
 ```
-configs/   training configs (one YAML per experiment / ablation)
-src/       dataset.py, model.py, losses.py, decode.py, evaluate.py
-scripts/   train.py, predict.py, show_samples.py
-notebooks/ end-to-end notebook for the final submission
-docs/      figures and report material
-data/      VOCdevkit/ (not committed)
-runs/      checkpoints, history.csv, curves (not committed)
-videos/    our phone videos + labels (not committed; zipped for submission)
+configs/    centernet_voc5.yaml (run A), centernet_voc5_noaug.yaml (B), grid_voc5.yaml (C), smoke_synthetic.yaml
+src/        dataset.py       VOC loader + augmentation                         (Mariam)
+            model.py         backbone, neck, CenterNet + grid detectors        (Abdallah)
+            targets.py       boxes -> heatmap / grid training targets          (Abdallah)
+            losses.py        focal loss, L1, grid loss                         (Abdallah)
+            train_utils.py   EMA, LR schedule, checkpoints, plots              (Abdallah)
+            boxes.py         IoU, NMS
+            synthetic.py     generated shapes for tests and smoke runs
+            evaluate.py      mAP, precision/recall, confusion matrix           (Youssef)
+scripts/    train.py, overfit_check.py, model_summary.py, plot_runs.py         (Abdallah)
+            predict.py                                                         (Youssef)
+            show_samples.py                                                    (Mariam)
+notebooks/  train_kaggle.ipynb: training on a free Kaggle GPU
+tests/      pytest suite (runs on every push via GitHub Actions)
+docs/       plan, tasks, training guide, figures
+data/ runs/ videos/   not committed (datasets, checkpoints, our videos)
 ```
 
 Each module's docstring sets out the interface the other modules rely on. Tell the team before you change one.
@@ -26,16 +51,27 @@ Each module's docstring sets out the interface the other modules rely on. Tell t
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-# VOC 2007 trainval+test and VOC 2012 trainval -> data/VOCdevkit/VOC2007, VOC2012
+python -m pytest -q          # about 1 minute on CPU; no dataset needed
 ```
+
+PASCAL VOC (2007 trainval + test, 2012 trainval) goes in `data/VOCdevkit/VOC2007` and `data/VOCdevkit/VOC2012`.
+
+## Training
+
+```bash
+python scripts/train.py --config configs/smoke_synthetic.yaml --out runs/smoke     # pipeline check, no data
+python scripts/train.py --config configs/centernet_voc5.yaml  --out runs/A_centernet
+```
+
+Re-running the same command resumes from `last.pt`. Each run writes `best.pt`, `last.pt`, `history.csv` and `loss_curve.png`. See the [training guide](docs/training.md) for Kaggle and the comparison runs.
 
 ## Experiments (comparison section)
 
-| Run | Head | Augmentation | Purpose |
-|---|---|---|---|
-| A | CenterNet heatmap | yes | main model |
-| B | CenterNet heatmap | no | effect of augmentation |
-| C | Grid (YOLO-v1-style) | yes | effect of head design |
+| Run | Config | Head | Augmentation | Question it answers |
+|---|---|---|---|---|
+| A | `centernet_voc5.yaml` | CenterNet heatmap | yes | main model |
+| B | `centernet_voc5_noaug.yaml` | CenterNet heatmap | no | what does augmentation contribute? |
+| C | `grid_voc5.yaml` | Grid (YOLO-v1-style) | yes | what does the head design contribute? |
 
 We report mAP@0.5, per-class AP, precision/recall, the confusion matrix and FPS on the VOC 2007 test set and on our own labelled video frames.
 
