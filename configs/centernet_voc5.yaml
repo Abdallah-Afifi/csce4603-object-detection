@@ -1,0 +1,23 @@
+# Main model: ResNet-style backbone + upsampling neck + CenterNet heads, trained from scratch
+classes: [person, car, bicycle, motorbike, bus]
+input_size: 384
+output_stride: 4            # heatmap is 96x96
+data:
+  voc_root: data/VOCdevkit
+  train_sets: [[2007, trainval], [2012, trainval]]
+  val_fraction: 0.1
+  test_set: [2007, test]
+augment: true               # flip, random crop, colour jitter (ablation: false)
+model:
+  head: centernet           # ablation: grid (YOLO-v1-style grid head)
+  backbone_widths: [64, 128, 256, 512]
+train:
+  epochs: 120
+  batch_size: 32
+  optimizer: adamw
+  lr: 0.001
+  weight_decay: 0.0001
+  scheduler: cosine
+  warmup_epochs: 3
+  loss_weights: {heatmap: 1.0, wh: 0.1, offset: 1.0}
+  seed: 0
