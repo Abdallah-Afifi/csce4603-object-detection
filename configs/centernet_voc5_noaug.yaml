@@ -1,0 +1,3 @@
+# Run B: same as A without data augmentation (measures what augmentation contributes).
+base: centernet_voc5.yaml
+augment: false

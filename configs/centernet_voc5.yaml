@@ -1,23 +1,45 @@
-# Main model: ResNet-style backbone + upsampling neck + CenterNet heads, trained from scratch
-classes: [person, car, bicycle, motorbike, bus]
-input_size: 384
-output_stride: 4            # heatmap is 96x96
+# Run A (main model): ResNet-style backbone + upsampling neck + CenterNet heads, from scratch.
+classes: [person, car, bicycle, motorbike, bus]   # order = label ids; must match src/dataset.py CLASSES
+input_size: 384                                   # network input is 384x384; heatmap is 96x96
+augment: true                                     # flip, random crop, colour jitter (run B turns it off)
+
 data:
-  voc_root: data/VOCdevkit
+  type: voc
+  voc_root: data/VOCdevkit                        # contains VOC2007/ and VOC2012/
   train_sets: [[2007, trainval], [2012, trainval]]
-  val_fraction: 0.1
-  test_set: [2007, test]
-augment: true               # flip, random crop, colour jitter (ablation: false)
+  val_fraction: 0.1                               # 10% of trainval held out for model selection
+  test_set: [2007, test]                          # final numbers only; never used for training
+  seed: 0
+  # Bonus: more training data from COCO restricted to our 5 classes (once src/dataset.py has it):
+  # extra_train:
+  #   - class: COCO5Dataset
+  #     kwargs: {root: data/coco, split: train2017}
+
 model:
-  head: centernet           # ablation: grid (YOLO-v1-style grid head)
-  backbone_widths: [64, 128, 256, 512]
+  head: centernet
+  backbone_widths: [64, 128, 256, 512]            # ResNet-18 widths
+  backbone_depths: [2, 2, 2, 2]                   # BasicBlocks per stage (ResNet-18)
+  neck_channels: 128
+  head_channels: 64
+  max_objects: 128
+
 train:
   epochs: 120
   batch_size: 32
-  optimizer: adamw
-  lr: 0.001
+  lr: 0.001                                       # AdamW peak learning rate
   weight_decay: 0.0001
-  scheduler: cosine
   warmup_epochs: 3
+  min_lr_ratio: 0.01                              # cosine decays to lr * 0.01
+  grad_clip: 10.0
+  ema_decay: 0.9998
+  amp: true                                       # mixed precision on CUDA only
+  workers: 4
   loss_weights: {heatmap: 1.0, wh: 0.1, offset: 1.0}
+  val_interval: 1                                 # val loss every epoch
+  eval_interval: 5                                # val mAP every 5 epochs (needs src/evaluate.voc_map)
+  log_interval: 50
   seed: 0
+
+eval:
+  score_thresh: 0.01                              # low threshold for mAP; predict.py uses ~0.3
+  max_det: 100

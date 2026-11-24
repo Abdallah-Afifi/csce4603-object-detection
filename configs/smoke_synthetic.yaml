@@ -1,0 +1,20 @@
+# Fast end-to-end check of the training pipeline on generated shapes (no dataset download).
+#   python scripts/train.py --config configs/smoke_synthetic.yaml --out runs/smoke
+base: centernet_voc5.yaml
+input_size: 128
+data:
+  type: synthetic
+  train_length: 512
+  val_length: 64
+model:
+  backbone_widths: [16, 32, 64, 128]
+  backbone_depths: [1, 1, 1, 1]
+  neck_channels: 32
+  head_channels: 32
+train:
+  epochs: 3
+  batch_size: 16
+  warmup_epochs: 1
+  workers: 0
+  log_interval: 10
+  eval_interval: 1

@@ -1,0 +1,7 @@
+# Run C: same backbone/neck/data as A, but a YOLO-v1-style grid head (24x24 cells at stride 16).
+base: centernet_voc5.yaml
+model:
+  head: grid
+  grid_stride: 16
+train:
+  loss_weights: {coord: 5.0, noobj: 0.5, obj: 1.0, cls: 1.0}
