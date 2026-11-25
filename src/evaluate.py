@@ -48,7 +48,9 @@ def voc_map(predictions, ground_truths, num_classes, iou_thresh=0.5):
         for gt in ground_truths:
             mask = gt["labels"] == c
             boxes = gt["boxes"][mask]
-            difficult = gt["difficult"][mask] if "difficult" in gt else torch.zeros(len(boxes), dtype=torch.bool)
+            # as bool: with 0/1 integer flags, ~difficult would flip bits (~1 = -2) instead of negating
+            difficult = (torch.as_tensor(gt["difficult"], dtype=torch.bool)[mask] if "difficult" in gt
+                         else torch.zeros(len(boxes), dtype=torch.bool))
             gt_boxes.append(boxes)
             gt_difficult.append(difficult)
             used.append(np.zeros(len(boxes), dtype=bool))

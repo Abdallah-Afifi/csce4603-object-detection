@@ -20,6 +20,7 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.dataset import MEAN, STD          # noqa: E402
 from src.model import load_model           # noqa: E402
+from src.train_utils import pick_device     # noqa: E402
 
 
 def letterbox(bgr, size):
@@ -52,7 +53,9 @@ def predict_image(model, bgr, size, thresh):
     h, w = bgr.shape[:2]
     boxes[:, [0, 2]] = boxes[:, [0, 2]].clip(0, w)
     boxes[:, [1, 3]] = boxes[:, [1, 3]].clip(0, h)
-    return boxes, det["scores"].cpu().numpy(), det["labels"].cpu().numpy()
+    # a box that lay entirely in the padding collapses to zero width/height after clipping: drop it
+    keep = (boxes[:, 2] - boxes[:, 0] >= 1) & (boxes[:, 3] - boxes[:, 1] >= 1)
+    return boxes[keep], det["scores"].cpu().numpy()[keep], det["labels"].cpu().numpy()[keep]
 
 
 def draw(bgr, boxes, scores, labels, names):
@@ -69,10 +72,10 @@ def main():
     parser.add_argument("--source", required=True, help="image file")
     parser.add_argument("--save", default=None, help="output image (default: <source>_pred.jpg)")
     parser.add_argument("--thresh", type=float, default=0.3)
-    parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
+    parser.add_argument("--device", default=None, help="cuda | mps | cpu (default: best available)")
     args = parser.parse_args()
 
-    model, cfg = load_model(args.weights, device=args.device)
+    model, cfg = load_model(args.weights, device=pick_device(args.device))
     size, names = cfg.get("input_size", 384), cfg["classes"]
 
     bgr = cv2.imread(args.source)
@@ -85,8 +88,14 @@ def main():
     for b, s, c in zip(boxes, scores, labels):
         print(f"  {names[c]:10s} {s:.2f}  box {np.round(b).astype(int).tolist()}")
 
-    save = args.save or str(Path(args.source).with_name(Path(args.source).stem + "_pred.jpg"))
-    cv2.imwrite(save, draw(bgr, boxes, scores, labels, names))
+    save = Path(args.save or Path(args.source).with_name(Path(args.source).stem + "_pred.jpg"))
+    save.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        ok = cv2.imwrite(str(save), draw(bgr, boxes, scores, labels, names))  # may return False silently
+    except cv2.error:
+        ok = False
+    if not ok:
+        sys.exit(f"Could not write {save} (use a .jpg or .png path)")
     print("saved", save)
 
 
