@@ -12,8 +12,8 @@ Open `notebooks/checkpoint_demo.ipynb` and run it from top to bottom. Each secti
 | 2 | Abdallah | `model_summary.py` output | ResNet-18-style backbone (11.2M parameters), FPN-style neck to 96×96, three heads; random init, no pretrained weights |
 | 2 | Abdallah | Heatmap target figure | how a box becomes a Gaussian centre target; focal loss + L1 |
 | 3 | Abdallah | Overfit check figure | the full loop (data → targets → loss → decode) is consistent: it memorises 8 real images |
-| 3 | Abdallah | Loss curve and val mAP of the checkpoint run | model A, full recipe, on VOC 2007 trainval for 40 epochs (the real run A is 07+12 for 120 epochs); val mAP went from 0.05 (epoch 10) to 0.11 (epoch 15) and is still rising |
-| 4 | Youssef | First predictions on validation images (early weights, threshold 0.15) | `predict.py` uses the same `preprocess` as training; boxes mapped back to the original image |
+| 3 | Abdallah | Loss curve and val mAP of the checkpoint run | model A, full recipe, on VOC 2007 trainval for 40 epochs (the real run A is 07+12 for 120 epochs); val mAP rose from 0.007 (epoch 5) to 0.31 (epoch 40) |
+| 4 | Youssef | Predictions on validation images (epoch 40, val-chosen threshold 0.22) and test-set numbers | `predict.py` uses the same `preprocess` as training; boxes mapped back to the original image |
 | 4 | Youssef | `voc_map` | VOC mAP@0.5, checked against the official devkit logic; picks `best.pt` during training |
 
 ## Before the lab
@@ -34,6 +34,19 @@ Run the notebook once before the lab so the figures in `docs/figures/` already e
 - **What does mAP@0.5 mean?** It is the area under each class's precision–recall curve (a box counts if IoU ≥ 0.5), averaged over the 5 classes.
 - **What is next?** Finish the runs, video prediction with overlay and FPS, precision/recall and the confusion matrix, our own campus videos as the test video, and failure cases.
 
-## Results so far
+## Results
 
-`docs/results/checkpoint_voc07/` holds the checkpoint run's config, `history.csv` and loss curve. The figures are in `docs/figures/`: class counts, augmented samples and the overfit check. The notebook is saved with its outputs, so it can be shown without re-running.
+Checkpoint run, VOC 2007 test (4,952 images never used in training):
+- **mAP@0.5:** 0.266 (official VOC2007 11-point: 0.291).
+- **AP per class:** person 0.38, car 0.39, bicycle 0.20, motorbike 0.27, bus 0.10.
+- **At the val-chosen threshold (0.22):** precision 0.41, recall 0.42.
+- **Speed:** 141 FPS on the laptop GPU.
+
+The model is trained from scratch on VOC 2007 only for 40 epochs. The real run A adds VOC 2012 and trains for 120 epochs.
+
+Known failure cases to explain:
+- **Missed objects** are the largest error; bus has the fewest training examples.
+- **Duplicate boxes** appear on large objects (several heatmap peaks for one car).
+- **Bus is sometimes called car.**
+
+`docs/results/checkpoint_voc07/` holds the config, `history.csv`, loss curve, and `test_eval/` (metrics.json, confusion matrix, P–R curve). The figures are in `docs/figures/`: class counts, augmented samples and the overfit check. The notebook is saved with its outputs, so it can be shown without re-running.
