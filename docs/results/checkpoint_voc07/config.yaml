@@ -1,0 +1,56 @@
+classes:
+- person
+- car
+- bicycle
+- motorbike
+- bus
+input_size: 384
+augment: true
+data:
+  type: voc
+  voc_root: data/VOCdevkit
+  train_sets:
+  - - 2007
+    - trainval
+  val_fraction: 0.1
+  test_set:
+  - 2007
+  - test
+  seed: 0
+model:
+  head: centernet
+  backbone_widths:
+  - 64
+  - 128
+  - 256
+  - 512
+  backbone_depths:
+  - 2
+  - 2
+  - 2
+  - 2
+  neck_channels: 128
+  head_channels: 64
+  max_objects: 128
+train:
+  epochs: 40
+  batch_size: 32
+  lr: 0.001
+  weight_decay: 0.0001
+  warmup_epochs: 2
+  min_lr_ratio: 0.01
+  grad_clip: 10.0
+  ema_decay: 0.9998
+  amp: true
+  workers: 4
+  loss_weights:
+    heatmap: 1.0
+    wh: 0.1
+    offset: 1.0
+  val_interval: 1
+  eval_interval: 5
+  log_interval: 20
+  seed: 0
+eval:
+  score_thresh: 0.01
+  max_det: 100

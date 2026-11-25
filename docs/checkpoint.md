@@ -12,8 +12,8 @@ Open `notebooks/checkpoint_demo.ipynb` and run it from top to bottom. Each secti
 | 2 | Abdallah | `model_summary.py` output | ResNet-18-style backbone (11.2M parameters), FPN-style neck to 96×96, three heads; random init, no pretrained weights |
 | 2 | Abdallah | Heatmap target figure | how a box becomes a Gaussian centre target; focal loss + L1 |
 | 3 | Abdallah | Overfit check figure | the full loop (data → targets → loss → decode) is consistent: it memorises 8 real images |
-| 3 | Abdallah | Loss curve of run A so far | AdamW, warm-up + cosine, EMA; resumable; val mAP every 5 epochs |
-| 4 | Youssef | First predictions on validation images | `predict.py` uses the same `preprocess` as training; boxes mapped back to the original image |
+| 3 | Abdallah | Loss curve and val mAP of the checkpoint run | model A, full recipe, on VOC 2007 trainval for 40 epochs (the real run A is 07+12 for 120 epochs); val mAP went from 0.05 (epoch 10) to 0.11 (epoch 15) and is still rising |
+| 4 | Youssef | First predictions on validation images (early weights, threshold 0.15) | `predict.py` uses the same `preprocess` as training; boxes mapped back to the original image |
 | 4 | Youssef | `voc_map` | VOC mAP@0.5, checked against the official devkit logic; picks `best.pt` during training |
 
 ## Before the lab
@@ -33,3 +33,7 @@ Run the notebook once before the lab so the figures in `docs/figures/` already e
 - **What is the comparison?** Run A (heatmap head) vs run C (our own grid head, idea from YOLO v1, same backbone) vs run B (A without augmentation). All three use the same data and epoch budget.
 - **What does mAP@0.5 mean?** It is the area under each class's precision–recall curve (a box counts if IoU ≥ 0.5), averaged over the 5 classes.
 - **What is next?** Finish the runs, video prediction with overlay and FPS, precision/recall and the confusion matrix, our own campus videos as the test video, and failure cases.
+
+## Results so far
+
+`docs/results/checkpoint_voc07/` holds the checkpoint run's config, `history.csv` and loss curve. The figures are in `docs/figures/`: class counts, augmented samples and the overfit check. The notebook is saved with its outputs, so it can be shown without re-running.

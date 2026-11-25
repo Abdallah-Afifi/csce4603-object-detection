@@ -14,8 +14,8 @@ What we show: the data loads correctly, the model builds, training runs, and the
 - [x] Tests: encode→decode round trip, overfit check, train + resume (`tests/`)
 - [x] Kaggle training notebook (`notebooks/train_kaggle.ipynb`)
 - [x] Add Mariam and Youssef as collaborators
-- [ ] When `VOC5Dataset` lands: `overfit_check.py` on real images, then start run A on Kaggle
-- [ ] Checkpoint material: `model_summary.py` output, overfit figure, loss curve so far
+- [x] When `VOC5Dataset` lands: `overfit_check.py` on real images, then start run A on Kaggle
+- [x] Checkpoint material: `model_summary.py` output, overfit figure, loss curve so far
 
 ### Mariam: data
 - [ ] VOC 2007 trainval + test and VOC 2012 trainval downloaded; shared as one Kaggle dataset
