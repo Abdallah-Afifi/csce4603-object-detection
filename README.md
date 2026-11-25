@@ -35,9 +35,9 @@ src/        dataset.py       VOC loader + augmentation                         (
             train_utils.py   EMA, LR schedule, checkpoints, plots              (Abdallah)
             boxes.py         IoU, NMS
             synthetic.py     generated shapes for tests and smoke runs
-            evaluate.py      mAP, precision/recall, confusion matrix           (Youssef)
+            evaluate.py      mAP (all-point + VOC07), P/R/F1, confusion matrix (Youssef)
 scripts/    train.py, overfit_check.py, model_summary.py, plot_runs.py         (Abdallah)
-            predict.py                                                         (Youssef)
+            predict.py (image / video / webcam, --show), evaluate.py (test-set metrics)  (Youssef)
             show_samples.py, dataset_stats.py                                  (Mariam)
 notebooks/  train_kaggle.ipynb: training on a free Kaggle GPU
 tests/      pytest suite (runs on every push via GitHub Actions)
@@ -62,6 +62,8 @@ PASCAL VOC (2007 trainval + test, 2012 trainval) goes in `data/VOCdevkit/VOC2007
 ```bash
 python scripts/train.py --config configs/smoke_synthetic.yaml --out runs/smoke     # pipeline check, no data
 python scripts/train.py --config configs/centernet_voc5.yaml  --out runs/A_centernet
+python scripts/evaluate.py runs/A_centernet runs/B_noaug runs/C_grid --out docs/results/comparison
+python scripts/predict.py --weights runs/A_centernet/best.pt --source clip.mp4 --show
 ```
 
 Re-running the same command resumes from `last.pt`. Each run writes `best.pt`, `last.pt`, `history.csv` and `loss_curve.png`. See the [training guide](docs/training.md) for Kaggle and the comparison runs.
