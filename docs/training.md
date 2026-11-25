@@ -72,7 +72,7 @@ dets = model.decode(out, score_thresh=0.3)           # list of {"boxes" xyxy in 
 names = cfg["classes"]                               # label id -> name
 ```
 
-Use the same call for the grid model; `load_model` reads the head type from the checkpoint. Boxes are in network-input pixels, so map them back to the original frame by undoing the resize.
+Use the same call for the grid model; `load_model` reads the head type from the checkpoint. Prepare frames with `src.dataset.preprocess(frame)` and map boxes back with `src.dataset.boxes_to_original(boxes, info)`; `scripts/predict.py` already does both.
 
 ## Bonus (precision and recall > 85%): levers in this code
 
