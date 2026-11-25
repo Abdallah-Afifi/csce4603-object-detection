@@ -13,7 +13,7 @@ What we show: the data loads correctly, the model builds, training runs, and the
 - [x] Training script: AMP, EMA, warm-up + cosine, resume, history.csv, loss curve (`scripts/train.py`)
 - [x] Tests: encode→decode round trip, overfit check, train + resume (`tests/`)
 - [x] Kaggle training notebook (`notebooks/train_kaggle.ipynb`)
-- [ ] Add Mariam and Youssef as collaborators
+- [x] Add Mariam and Youssef as collaborators
 - [ ] When `VOC5Dataset` lands: `overfit_check.py` on real images, then start run A on Kaggle
 - [ ] Checkpoint material: `model_summary.py` output, overfit figure, loss curve so far
 
@@ -25,8 +25,9 @@ What we show: the data loads correctly, the model builds, training runs, and the
 - [ ] Object counts per class (the person-class imbalance goes in the report)
 
 ### Youssef: prediction and evaluation
-- [ ] `scripts/predict.py` on one image using `load_model` + `model.decode` (see `docs/training.md`)
-- [ ] `voc_map` in `src/evaluate.py` (once it exists, training uses it to pick `best.pt`)
+- [x] `scripts/predict.py` on one image using `load_model` + `model.decode` (see `docs/training.md`)
+- [x] `voc_map` in `src/evaluate.py` (once it exists, training uses it to pick `best.pt`)
+- [ ] Agree with Mariam on one shared resize function (letterbox or stretch) that both the dataset and predict.py import
 
 ## After the checkpoint (26 Nov – 6 Dec)
 
