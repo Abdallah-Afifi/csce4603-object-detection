@@ -87,7 +87,7 @@ AUG = {
     "sat": (0.6, 1.4),
     "val": (0.6, 1.4),
 }
-MIN_BOX_PX = 2.0            # boxes smaller than this (in 384-px input) after augmentation are dropped
+MIN_BOX_PX = 2.0            # train only: boxes smaller than this (in 384-px input) are dropped
 
 
 # ----------------------------------------------------------------------------------------------
@@ -322,7 +322,9 @@ class VOC5Dataset(Dataset):
         boxes[:, [0, 2]] += info["pad_x"]
         boxes[:, [1, 3]] += info["pad_y"]
         boxes = boxes.clip(0, self.size)
-        keep = ((boxes[:, 2] - boxes[:, 0]) >= MIN_BOX_PX) & ((boxes[:, 3] - boxes[:, 1]) >= MIN_BOX_PX)
+        # Training drops slivers left by cropping; val/test keep every real box so mAP is not inflated.
+        min_px = MIN_BOX_PX if self.split == "train" else 0.0
+        keep = ((boxes[:, 2] - boxes[:, 0]) > min_px) & ((boxes[:, 3] - boxes[:, 1]) > min_px)
         target = {"boxes": torch.from_numpy(boxes[keep].astype(np.float32)),
                   "labels": torch.from_numpy(labels[keep].astype(np.int64)),
                   "image_id": self.records[idx]["id"]}

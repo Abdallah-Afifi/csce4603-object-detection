@@ -165,3 +165,23 @@ def test_works_with_training_encoder(voc_root):
     assert enc["heatmap"].shape[0] == 4 if "heatmap" in enc else len(enc) > 0
     with torch.no_grad():
         model.eval()(images)
+
+
+def test_tiny_boxes_dropped_in_train_but_kept_for_evaluation(tmp_path):
+    """The 2-px minimum is a training rule; mAP must be computed on every real box."""
+    from tests.fake_voc import _write_image
+    root = tmp_path / "VOCdevkit"
+    for year in (2007, 2012):
+        for sub in ("Annotations", "JPEGImages", "ImageSets/Main"):
+            (root / f"VOC{year}" / sub).mkdir(parents=True, exist_ok=True)
+    ids = [f"{i:06d}" for i in range(1, 11)]
+    (root / "VOC2007/ImageSets/Main/trainval.txt").write_text("\n".join(ids) + "\n")
+    (root / "VOC2012/ImageSets/Main/trainval.txt").write_text("")
+    for i in ids:   # 1000x500 image -> scale 0.384: the 3-px-wide person becomes ~1.2 px
+        _write_image(root / "VOC2007", i, [("person", (10, 10, 12, 60), False),
+                                           ("car", (100, 100, 400, 300), False)], (1000, 500))
+    for split, n_expected in (("train", 1), ("val", 2)):
+        ds = D.VOC5Dataset(root, sets=[(2007, "trainval")], split=split, input_size=384, val_fraction=0.5)
+        boxes = ds[0][1]["boxes"]
+        assert len(boxes) == n_expected, split
+        assert ((boxes[:, 2] > boxes[:, 0]) & (boxes[:, 3] > boxes[:, 1])).all()

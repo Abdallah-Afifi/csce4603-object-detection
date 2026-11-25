@@ -55,7 +55,7 @@ Applied to the original image before the letterbox; boxes are transformed with t
 | Horizontal flip | probability 0.5 | x coordinates mirrored |
 | Colour | always: hue ±10°, saturation and brightness ×0.6-1.4 (HSV) | unchanged |
 
-After augmentation, boxes smaller than 2 px in the 384×384 input are dropped. Run B (`centernet_voc5_noaug.yaml`) turns all of this off, which is how the report measures what augmentation contributes.
+After augmentation, training boxes smaller than 2 px in the 384×384 input are dropped. Validation and test keep every box, so mAP is never computed on a filtered ground truth. Run B (`centernet_voc5_noaug.yaml`) turns all of this off, which is how the report measures what augmentation contributes.
 
 Randomness comes from PyTorch's random generator, which the DataLoader seeds separately for each worker, so workers do not produce identical augmentations and a seeded run is repeatable.
 

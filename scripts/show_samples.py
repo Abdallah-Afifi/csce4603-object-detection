@@ -38,7 +38,7 @@ def draw(ax, image, target, title):
         x1, y1, x2, y2 = box
         ax.add_patch(patches.Rectangle((x1, y1), x2 - x1, y2 - y1, fill=False, lw=1.8,
                                        edgecolor=COLOURS[lab]))
-        ax.text(x1 + 2, y1 + 2, D.CLASSES[lab], fontsize=7, color="white", va="top",
+        ax.text(x1, y1 - 1, D.CLASSES[lab], fontsize=7, color="white", va="bottom",  # above the box
                 bbox=dict(facecolor=COLOURS[lab], edgecolor="none", pad=1))
     ax.set_title(title, fontsize=8)
     ax.axis("off")

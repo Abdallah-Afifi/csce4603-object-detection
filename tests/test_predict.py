@@ -1,7 +1,8 @@
 import numpy as np
 import torch
 
-from scripts.predict import letterbox, predict_image
+from scripts.predict import predict_image
+from src.dataset import preprocess
 
 
 class StubDetector(torch.nn.Module):
@@ -12,9 +13,11 @@ class StubDetector(torch.nn.Module):
         self.dummy = torch.nn.Parameter(torch.zeros(1))
         self.boxes = torch.tensor(boxes, dtype=torch.float32)
         self.input_shape = None
+        self.seen = None
 
     def forward(self, x):
         self.input_shape = tuple(x.shape)
+        self.seen = x.detach().cpu()
         return x
 
     def decode(self, out, score_thresh):
@@ -22,10 +25,14 @@ class StubDetector(torch.nn.Module):
         return [{"boxes": self.boxes.clone(), "scores": torch.full((n,), 0.9), "labels": torch.zeros(n, dtype=torch.long)}]
 
 
-def test_letterbox_keeps_aspect_ratio_and_centres():
-    padded, scale, left, top = letterbox(np.full((480, 640, 3), 255, np.uint8), 384)
-    assert padded.shape == (384, 384, 3) and scale == 0.6 and (left, top) == (0, 48)
-    assert padded[:48].max() == 0 and padded[48:336].min() == 255 and padded[336:].max() == 0
+def test_predict_feeds_the_model_exactly_what_training_sees():
+    """predict.py must use the dataset's preprocessing (same letterbox, padding colour, MEAN/STD)."""
+    frame = np.random.default_rng(0).integers(0, 255, (480, 640, 3), dtype=np.uint8)
+    model = StubDetector([[100, 150, 200, 250]])
+    predict_image(model, frame, 384, 0.3)
+    expected, _ = preprocess(frame, 384)
+    assert torch.equal(model.seen[0], expected)
+    assert model.seen[0, :, :48].abs().max() < 0.03       # padding is the mean colour -> ~0
 
 
 def test_boxes_map_back_to_original_image_and_padding_boxes_are_dropped():

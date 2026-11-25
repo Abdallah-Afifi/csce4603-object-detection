@@ -4,7 +4,7 @@ Usage:
     python scripts/predict.py --weights runs/A_centernet/best.pt --source path/to/image.jpg
     python scripts/predict.py --weights runs/A_centernet/best.pt --source image.jpg --save out.jpg --thresh 0.3
 
-Reads with OpenCV, letterboxes to the model input size, runs the model, decodes boxes, maps them back
+Reads with OpenCV, preprocesses exactly like training (src.dataset.preprocess: letterbox + MEAN/STD), runs the model, decodes boxes, maps them back
 to the original resolution and draws boxes + class + confidence.
 Video (box overlay + FPS) comes after the checkpoint.
 """
@@ -18,41 +18,21 @@ import numpy as np
 import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from src.dataset import MEAN, STD          # noqa: E402
+from src.dataset import boxes_to_original, preprocess  # noqa: E402
 from src.model import load_model           # noqa: E402
 from src.train_utils import pick_device     # noqa: E402
 
 
-def letterbox(bgr, size):
-    """Resize keeping the aspect ratio and pad to size x size. Returns the padded image and how to undo it."""
-    h, w = bgr.shape[:2]
-    scale = size / max(h, w)
-    nh, nw = round(h * scale), round(w * scale)
-    resized = cv2.resize(bgr, (nw, nh), interpolation=cv2.INTER_LINEAR)
-    top, left = (size - nh) // 2, (size - nw) // 2
-    padded = np.zeros((size, size, 3), dtype=np.uint8)
-    padded[top:top + nh, left:left + nw] = resized
-    return padded, scale, left, top
-
-
-def to_tensor(padded_bgr):
-    # same preprocessing as the dataset: RGB, 0..1, normalised with MEAN / STD
-    rgb = cv2.cvtColor(padded_bgr, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
-    rgb = (rgb - np.array(MEAN, dtype=np.float32)) / np.array(STD, dtype=np.float32)
-    return torch.from_numpy(rgb).permute(2, 0, 1).unsqueeze(0)
-
-
 def predict_image(model, bgr, size, thresh):
-    padded, scale, left, top = letterbox(bgr, size)
+    """Run the detector on one BGR frame. Returns boxes (xyxy in the frame's pixels), scores, labels.
+
+    Uses the dataset's own preprocess() (letterbox with mean-colour padding + MEAN/STD), so a frame is
+    prepared exactly like the training images, and boxes_to_original() to undo it.
+    """
+    tensor, info = preprocess(bgr, size)
     with torch.no_grad():
-        det = model.decode(model(to_tensor(padded).to(next(model.parameters()).device)), score_thresh=thresh)[0]
-    boxes = det["boxes"].cpu().numpy()
-    # undo the letterbox: remove the padding, then the resize
-    boxes[:, [0, 2]] = (boxes[:, [0, 2]] - left) / scale
-    boxes[:, [1, 3]] = (boxes[:, [1, 3]] - top) / scale
-    h, w = bgr.shape[:2]
-    boxes[:, [0, 2]] = boxes[:, [0, 2]].clip(0, w)
-    boxes[:, [1, 3]] = boxes[:, [1, 3]].clip(0, h)
+        det = model.decode(model(tensor.unsqueeze(0).to(next(model.parameters()).device)), score_thresh=thresh)[0]
+    boxes = boxes_to_original(det["boxes"].cpu().numpy(), info)
     # a box that lay entirely in the padding collapses to zero width/height after clipping: drop it
     keep = (boxes[:, 2] - boxes[:, 0] >= 1) & (boxes[:, 3] - boxes[:, 1] >= 1)
     return boxes[keep], det["scores"].cpu().numpy()[keep], det["labels"].cpu().numpy()[keep]

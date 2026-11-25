@@ -19,15 +19,15 @@ What we show: the data loads correctly, the model builds, training runs, and the
 
 ### Mariam: data
 - [ ] VOC 2007 trainval + test and VOC 2012 trainval downloaded; shared as one Kaggle dataset
-- [ ] `VOC5Dataset` following the interface in `src/dataset.py`; `pytest tests/test_dataset_contract.py` passes
-- [ ] Augmentation (flip, crop, colour jitter), with boxes kept correct
-- [ ] `scripts/show_samples.py` figure of augmented samples with boxes (checkpoint figure)
-- [ ] Object counts per class (the person-class imbalance goes in the report)
+- [x] `VOC5Dataset` following the interface in `src/dataset.py`; tested on a generated VOC-format folder; run `pytest tests/test_dataset_contract.py` once real VOC is downloaded
+- [x] Augmentation (flip, crop, colour jitter), with boxes kept correct
+- [x] `scripts/show_samples.py` figure of augmented samples with boxes (checkpoint figure)
+- [x] Object counts per class script (`scripts/dataset_stats.py`); run it on real VOC for the report table
 
 ### Youssef: prediction and evaluation
 - [x] `scripts/predict.py` on one image using `load_model` + `model.decode` (see `docs/training.md`)
 - [x] `voc_map` in `src/evaluate.py` (once it exists, training uses it to pick `best.pt`)
-- [ ] Agree with Mariam on one shared resize function (letterbox or stretch) that both the dataset and predict.py import
+- [x] Agree with Mariam on one shared resize function (letterbox, `src.dataset.preprocess`) that both the dataset and predict.py import
 
 ## After the checkpoint (26 Nov – 6 Dec)
 
