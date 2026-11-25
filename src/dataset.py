@@ -284,7 +284,8 @@ class VOC5Dataset(Dataset):
             test_txt = self.root / "VOC2007" / "ImageSets" / "Main" / "test.txt"
             if test_txt.exists():
                 test_ids = {canonical_id(2007, i) for i in _read_ids(self.root, 2007, "test")}
-            elif self.require_test_list:
+            elif self.require_test_list and any(year != 2007 for year, _ in self.sets):
+                # Only other years' lists (VOC2012 re-uses 2007 ids) can contain 2007 test images.
                 # Without the list we cannot keep VOC2007 test images out of train/val.
                 raise FileNotFoundError(
                     f"{test_txt} not found: extract VOCtest_06-Nov-2007.tar into the same VOC2007/ "

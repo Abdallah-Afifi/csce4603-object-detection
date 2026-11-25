@@ -31,8 +31,11 @@ def test_train_writes_outputs_and_resumes(tmp_path):
     assert len(rows) == 2 and {"train_total", "train_hm", "val_total", "lr"} <= set(rows[0])
     assert all(torch.isfinite(torch.tensor(float(r["train_total"]))) for r in rows)
 
-    # Resume: raising epochs continues from epoch 3, keeping the earlier history.
-    history = train(_cfg("train.epochs=3"), out, device="cpu", log=lambda *_: None)
+    # Resuming with a different schedule is refused (the LR would jump) unless explicitly allowed.
+    import pytest
+    with pytest.raises(SystemExit, match="different schedule"):
+        train(_cfg("train.epochs=3"), out, device="cpu", log=lambda *_: None)
+    history = train(_cfg("train.epochs=3"), out, device="cpu", log=lambda *_: None, allow_config_change=True)
     assert [r["epoch"] for r in history] == [1, 2, 3]
     ckpt = torch.load(out / "last.pt", weights_only=False)
     assert ckpt["epoch"] == 3 and ckpt["global_step"] == 3 * 3
@@ -98,3 +101,32 @@ def test_overfits_small_synthetic_set():
             if same.any() and box_iou(box[None], det["boxes"][same]).max() >= 0.5:
                 found += 1
     assert found / total >= 0.9, f"recovered {found}/{total} boxes after overfitting"
+
+
+def test_skipped_non_finite_step_does_not_poison_batchnorm_or_ema(tmp_path, monkeypatch):
+    """An overflowing forward writes NaN into BN running stats before the loss can be checked.
+    The step must be skipped AND the stats restored, or every later eval (and the EMA) is NaN."""
+    original = CenterNet.forward
+    calls = {"n": 0}
+
+    def forward(self, x):
+        if self.training:
+            calls["n"] += 1
+            if calls["n"] == 2:              # one bad batch in the middle of epoch 1
+                x = x * float("inf")
+        return original(self, x)
+
+    monkeypatch.setattr(CenterNet, "forward", forward)
+    logs = []
+    history = train(_cfg("train.epochs=1"), tmp_path / "nan", device="cpu", log=logs.append)
+    assert history[0]["skipped_steps"] == 1
+    assert torch.isfinite(torch.tensor(history[0]["val_total"]))
+    ckpt = torch.load(tmp_path / "nan" / "last.pt", weights_only=False)
+    for state in (ckpt["model"], ckpt["ema"]):
+        assert all(torch.isfinite(v).all() for k, v in state.items() if v.is_floating_point())
+
+
+def test_overrides_parse_scientific_notation():
+    cfg = apply_overrides({}, ["train.lr=1e-3", "eval.score_thresh=1e-2", "model.head=grid", "x=5"])
+    assert cfg["train"]["lr"] == 0.001 and cfg["eval"]["score_thresh"] == 0.01
+    assert cfg["model"]["head"] == "grid" and cfg["x"] == 5

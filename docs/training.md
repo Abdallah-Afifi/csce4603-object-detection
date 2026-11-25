@@ -12,7 +12,7 @@ Owner: Abdallah Afifi. Code: `src/model.py`, `src/targets.py`, `src/losses.py`, 
    - `heatmap` [5×96×96]: one channel per class, with a peak at each object's centre.
    - `wh` [2×96×96]: box width and height, read at the peak.
    - `offset` [2×96×96]: where the true centre falls inside its cell, which recovers the precision lost by downsampling ×4.
-4. **Targets.** For each ground-truth box we draw a 2-D Gaussian on its class channel, with value 1 at the centre cell. The radius is chosen so that a box centred anywhere inside the Gaussian still overlaps the true box with IoU ≥ 0.7.
+4. **Targets.** For each ground-truth box we draw a 2-D Gaussian on its class channel, with value 1 at the centre cell. Its radius grows with the box size, using the heuristic from CornerNet that the original CenterNet code reuses. Cells near a centre are therefore penalised less for firing.
 5. **Losses.**
    - Focal loss on the heatmap. Background cells vastly outnumber centres; focal loss down-weights easy cells, and the `(1 - gt)^4` term penalises cells next to a centre less.
    - L1 loss on `wh` and `offset`, at centre cells only.
@@ -52,14 +52,14 @@ python scripts/model_summary.py --config configs/centernet_voc5.yaml
 ```
 
 Any config value can be overridden: `--set train.epochs=60 train.batch_size=16`.
-Re-running the same command resumes from `runs/<name>/last.pt`.
+Re-running the same command, with the same `--set` values, resumes from `runs/<name>/last.pt`. A changed schedule (epochs, batch size, learning rate) is refused unless you pass `--allow-config-change`.
 
 ## On Kaggle (free GPU)
 
 Use `notebooks/train_kaggle.ipynb`. Set the accelerator to GPU T4 ×2 or P100 and turn the internet on. Sessions last up to 12 h and the GPU quota is about 30 h a week, so the three runs need planning:
 
-- Run A first, at full length. It is the main model and the source of the demo weights.
-- Runs B and C can be shorter (for example `--set train.epochs=60`), as long as they share the same epoch budget so the comparison is fair. Say this in the report.
+- Run A first. It is the main model and the source of the demo weights.
+- **All three runs must use the same epoch count**, because the comparison is only fair at the same budget. If time is short, train A, B and C for 60 epochs each and give A a longer run separately for the final demo weights. Don't compare a 120-epoch A against 60-epoch B and C.
 - To continue after a timeout: open the notebook's saved output version, add it as an input, copy its `runs/<name>` folder back to `/kaggle/working/runs/`, and run the same command again.
 
 ## For Youssef: using the trained model
@@ -77,6 +77,6 @@ Use the same call for the grid model; `load_model` reads the head type from the 
 ## Bonus (precision and recall > 85%): levers in this code
 
 - **More data:** add COCO images of the same 5 classes through `data.extra_train` in the config (Mariam's `COCO5Dataset`). This is the biggest gain when training from scratch.
-- **Longer training:** raise `train.epochs` (resume continues the cosine schedule from where it stopped, though the curve will change shape).
+- **Longer training:** set a larger `train.epochs` from the start. Resuming with a different `epochs`, batch size or learning rate is refused, because the cosine schedule would jump; `--allow-config-change` overrides this.
 - **Larger input:** `--set input_size=512` helps small objects but is about 1.8× slower.
 - **Operating point:** report precision and recall at the score threshold that maximises F1, and show the full P–R curve on the VOC test set and on our own video frames.

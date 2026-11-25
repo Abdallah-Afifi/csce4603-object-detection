@@ -52,7 +52,13 @@ def apply_overrides(cfg: dict, overrides: Iterable[str] | None) -> dict:
             if not isinstance(node.get(part), dict):
                 node[part] = {}
             node = node[part]
-        node[parts[-1]] = yaml.safe_load(raw)
+        value = yaml.safe_load(raw)
+        if isinstance(value, str):  # YAML 1.1 reads "1e-3" (no dot) as a string
+            try:
+                value = float(value)
+            except ValueError:
+                pass
+        node[parts[-1]] = value
     return cfg
 
 

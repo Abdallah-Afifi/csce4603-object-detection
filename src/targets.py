@@ -36,10 +36,11 @@ def _sanitize(boxes: np.ndarray, labels: np.ndarray, input_hw: tuple[int, int],
 # ----------------------------------------------------------------------------------------------
 
 def gaussian_radius(height: float, width: float, min_overlap: float = 0.7) -> float:
-    """Largest centre shift that still keeps IoU >= ``min_overlap`` with the true box.
+    """Gaussian radius heuristic from CornerNet, reused unchanged by the original CenterNet code.
 
-    Three cases (both corners inside / both outside / one of each) from CornerNet; we take the
-    smallest radius. This is the formula used by the original CenterNet code.
+    CornerNet derived it for shifting box *corners* while keeping IoU >= ``min_overlap`` (three
+    cases: both corners inside / outside / one of each; smallest radius wins). Applied to the centre,
+    as CenterNet does, it is only a size-dependent spread for the target, not an IoU guarantee.
     """
     a1, b1 = 1.0, height + width
     c1 = width * height * (1 - min_overlap) / (1 + min_overlap)

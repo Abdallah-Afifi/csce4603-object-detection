@@ -225,3 +225,13 @@ def test_missing_test_list_is_an_error_not_a_silent_leak(voc_root, tmp_path):
         make(root, "train")
     ids = all_ids(D.VOC5Dataset(root, sets=SETS, split="train", input_size=384, require_test_list=False))
     assert "2007_000033" in ids                        # without the list the test image leaks: why it is an error
+
+
+def test_2007_only_runs_do_not_need_the_test_list(voc_root, tmp_path):
+    """VOC2007 trainval and test never overlap, so only runs that include other years need test.txt."""
+    import shutil
+    root = tmp_path / "VOCdevkit"
+    shutil.copytree(voc_root, root)
+    (root / "VOC2007/ImageSets/Main/test.txt").unlink()
+    ds = D.VOC5Dataset(root, sets=[(2007, "trainval")], split="train", input_size=384)
+    assert len(ds) > 0

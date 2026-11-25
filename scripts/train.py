@@ -170,7 +170,8 @@ def validate(model, loader, device, loss_weights, map_fn, class_names, decode_kw
 # ----------------------------------------------------------------------------------------------
 
 def train(cfg: dict, out_dir: str | Path, resume: bool = True, device: str | None = None,
-          workers: int | None = None, max_iters: int | None = None, log=print):
+          workers: int | None = None, max_iters: int | None = None, log=print,
+          allow_config_change: bool = False):
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     t = cfg.get("train", {})
@@ -209,8 +210,11 @@ def train(cfg: dict, out_dir: str | Path, resume: bool = True, device: str | Non
     val_loader = make_loader(val_ds, encoder, batch_size, workers, False, dev, seed)
     iters_per_epoch = len(train_loader) if max_iters is None else min(max_iters, len(train_loader))
     total_iters = epochs * iters_per_epoch
-    lr_factor = warmup_cosine(total_iters, t.get("warmup_epochs", 3) * iters_per_epoch,
-                              t.get("min_lr_ratio", 0.01))
+    warmup_iters = t.get("warmup_epochs", 3) * iters_per_epoch
+    lr_factor = warmup_cosine(total_iters, warmup_iters, t.get("min_lr_ratio", 0.01))
+    # Everything the LR schedule depends on; a resume must match it or the schedule jumps.
+    schedule = {"epochs": epochs, "iters_per_epoch": iters_per_epoch, "warmup_iters": warmup_iters,
+                "base_lr": base_lr, "min_lr_ratio": t.get("min_lr_ratio", 0.01), "batch_size": batch_size}
 
     map_fn = get_map_fn()
     eval_cfg = cfg.get("eval", {})
@@ -223,6 +227,15 @@ def train(cfg: dict, out_dir: str | Path, resume: bool = True, device: str | Non
     last_path = out_dir / "last.pt"
     if resume and last_path.exists():
         ckpt = torch.load(last_path, map_location="cpu", weights_only=False)
+        saved = ckpt.get("schedule")
+        if saved is not None and saved != schedule:
+            diff = {k: (saved.get(k), schedule.get(k)) for k in schedule if saved.get(k) != schedule.get(k)}
+            if not allow_config_change:
+                raise SystemExit(
+                    f"{last_path} was trained with a different schedule (saved, now): {diff}.\n"
+                    "Re-run with the same --set values, use a new --out, or pass --allow-config-change "
+                    "(the cosine schedule is then recomputed and the learning rate jumps).")
+            log(f"[warn] schedule changed on resume: {diff}")
         core.load_state_dict(ckpt["model"])
         ema.ema.load_state_dict(ckpt["ema"])
         ema.updates = ckpt.get("ema_updates", 0)
@@ -232,6 +245,8 @@ def train(cfg: dict, out_dir: str | Path, resume: bool = True, device: str | Non
         start_epoch, global_step = ckpt["epoch"], ckpt["global_step"]
         history, best = ckpt.get("history", []), ckpt.get("best")
         log(f"Resumed from {last_path} at epoch {start_epoch}/{epochs}")
+        # A fresh session must not replay epoch 1's shuffle order and augmentations.
+        train_loader.generator.manual_seed(seed + 1_000_003 * start_epoch)
         if start_epoch >= epochs:
             log("Training already finished; raise train.epochs to continue.")
             return history
@@ -240,6 +255,9 @@ def train(cfg: dict, out_dir: str | Path, resume: bool = True, device: str | Non
         f"{count_parameters(core) / 1e6:.2f}M params | train {len(train_ds)} imgs, val {len(val_ds)} imgs | "
         f"{iters_per_epoch} it/epoch x {epochs} epochs | best.pt by {select_by}")
 
+    # BatchNorm running stats change during the forward pass, before we can check the loss. Keep a
+    # copy so a skipped (non-finite) step can be undone; otherwise NaN stats poison eval and the EMA.
+    bn_buffers = [b for name, b in core.named_buffers() if name.endswith(("running_mean", "running_var"))]
     clip = t.get("grad_clip", 10.0)
     log_every = t.get("log_interval", 50)
     val_every, map_every = t.get("val_interval", 1), t.get("eval_interval", 5)
@@ -260,12 +278,16 @@ def train(cfg: dict, out_dir: str | Path, resume: bool = True, device: str | Non
             if "dropped" in enc:
                 collisions += int(enc["dropped"].sum())
 
+            bn_backup = [b.clone() for b in bn_buffers]
             with torch.autocast(device_type=dev.type, dtype=torch.float16, enabled=amp):
                 out = model(images)
             loss, parts = core.compute_loss(out, enc, loss_weights)
 
             optimizer.zero_grad(set_to_none=True)
             if not torch.isfinite(loss):
+                with torch.no_grad():
+                    for buf, saved_buf in zip(bn_buffers, bn_backup):
+                        buf.copy_(saved_buf)
                 skipped += 1
                 skipped_total += 1
                 log(f"[warn] non-finite loss at epoch {epoch + 1} iter {it}; step skipped")
@@ -318,6 +340,7 @@ def train(cfg: dict, out_dir: str | Path, resume: bool = True, device: str | Non
         atomic_save({"model": core.state_dict(), "ema": ema.ema.state_dict(), "ema_updates": ema.updates,
                      "optimizer": optimizer.state_dict(), "scaler": scaler.state_dict() if amp else None,
                      "epoch": epoch + 1, "global_step": global_step, "history": history, "best": best,
+                     "schedule": schedule,
                      "config": cfg, "classes": cfg["classes"]}, last_path)
         write_history_csv(history, out_dir / "history.csv")
         plot_history(history, out_dir / "loss_curve.png", title=out_dir.name)
@@ -343,6 +366,8 @@ def parse_args(argv=None):
     p.add_argument("--workers", type=int, default=None, help="DataLoader workers")
     p.add_argument("--max-iters", type=int, default=None, help="cap iterations per epoch (smoke tests)")
     p.add_argument("--no-resume", action="store_true", help="ignore an existing last.pt")
+    p.add_argument("--allow-config-change", action="store_true",
+                   help="resume even if epochs/batch size/lr differ from last.pt (LR schedule jumps)")
     return p.parse_args(argv)
 
 
@@ -350,7 +375,7 @@ def main(argv=None):
     args = parse_args(argv)
     cfg = apply_overrides(load_config(args.config), args.set)
     train(cfg, args.out, resume=not args.no_resume, device=args.device, workers=args.workers,
-          max_iters=args.max_iters)
+          max_iters=args.max_iters, allow_config_change=args.allow_config_change)
 
 
 if __name__ == "__main__":
