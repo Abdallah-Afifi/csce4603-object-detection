@@ -10,6 +10,7 @@ from random initialisation on PASCAL VOC. It does not use pretrained weights or 
 - [Project plan](docs/project_plan.md): goal, pipeline, data, evaluation, who does what
 - [Tasks and checkpoint checklist](docs/tasks.md)
 - [Training guide](docs/training.md): how the model works, how to train, how to load weights
+- [Data](docs/data.md): download, folder layout, loader rules, augmentation, class counts
 
 ## Pipeline
 
@@ -37,7 +38,7 @@ src/        dataset.py       VOC loader + augmentation                         (
             evaluate.py      mAP, precision/recall, confusion matrix           (Youssef)
 scripts/    train.py, overfit_check.py, model_summary.py, plot_runs.py         (Abdallah)
             predict.py                                                         (Youssef)
-            show_samples.py                                                    (Mariam)
+            show_samples.py, dataset_stats.py                                  (Mariam)
 notebooks/  train_kaggle.ipynb: training on a free Kaggle GPU
 tests/      pytest suite (runs on every push via GitHub Actions)
 docs/       plan, tasks, training guide, figures
