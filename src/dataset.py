@@ -25,8 +25,9 @@ team before changing it):
     The training script adds its own collate function and target encoding; the dataset only
     returns images and boxes.
 
-Rules: for split="train" drop VOC "difficult" objects; skip images that contain none of the 5
-classes. predict.py must preprocess frames exactly the same way (resize method + MEAN/STD), so
+Rules: for split="train" drop VOC "difficult" objects and skip images that contain none of the 5
+classes. val/test keep every image, including ones with none of our classes (N = 0), so false
+positives on them are counted by mAP. predict.py must preprocess frames exactly the same way (resize method + MEAN/STD), so
 the resize is exposed as ``preprocess(bgr_image) -> (tensor, scale_info)``.
 
 Implementation notes
@@ -42,10 +43,9 @@ would appear twice and could land in both train and val. Duplicates are dropped 
 listed wins), and any image that is in VOC2007 test is removed from train/val, so the test set
 stays unseen.
 
-Train/val split: images with at least one of the 5 classes (difficult or not) are sorted by id,
-shuffled with ``seed`` and cut ``val_fraction`` / rest. The split is made before difficult objects
-are dropped, so train and val never share an image. Train then drops difficult objects and any
-image left with no objects.
+Train/val split: all images of the given sets are sorted by id, shuffled with ``seed`` and cut
+``val_fraction`` / rest, so train and val never share an image. Train then drops difficult objects
+and any image left with no objects (including images with none of our classes); val keeps them all.
 
 Augmentation (train only, applied to the original image before the letterbox; boxes follow):
     random crop  p=0.5: crop covering 30-100% of each side, aspect 0.5-2; an object is kept if
@@ -242,7 +242,7 @@ def augment_sample(img, boxes, labels, rng):
 class VOC5Dataset(Dataset):
     def __init__(self, root, sets=((2007, "trainval"), (2012, "trainval")), split: str = "train",
                  input_size: int = 384, augment: bool = False, val_fraction: float = 0.1,
-                 seed: int = 0):
+                 seed: int = 0, require_test_list: bool = True):
         if split not in ("train", "val", "test"):
             raise ValueError(f"split must be 'train', 'val' or 'test', got {split!r}")
         if augment and split != "train":
@@ -251,23 +251,27 @@ class VOC5Dataset(Dataset):
         self.sets = [(int(y), str(s)) for y, s in sets]
         self.split, self.size, self.augment = split, input_size, augment
         self.val_fraction, self.seed = val_fraction, seed
+        self.require_test_list = require_test_list
         self.info = Counter()  # bookkeeping for the README / report
 
         records = self._load_records()
         if split == "test":
             self.records = records
         else:
+            # Split over every image (with or without our classes) so train and val never share one.
             order = np.random.default_rng(seed).permutation(len(records))
             n_val = int(round(len(records) * val_fraction))
             chosen = order[:n_val] if split == "val" else order[n_val:]
             self.records = [records[i] for i in sorted(chosen)]
-            if split == "train":  # drop difficult objects, then images left empty
+            if split == "train":  # drop difficult objects, then images left with no objects
                 kept = []
                 for r in self.records:
                     m = ~r["difficult"]
                     if m.any():
                         kept.append({**r, "boxes": r["boxes"][m], "labels": r["labels"][m],
                                      "difficult": r["difficult"][m]})
+                    elif len(r["labels"]) == 0:
+                        self.info["images_without_5_classes"] += 1
                     else:
                         self.info["images_only_difficult"] += 1
                 self.records = kept
@@ -280,6 +284,11 @@ class VOC5Dataset(Dataset):
             test_txt = self.root / "VOC2007" / "ImageSets" / "Main" / "test.txt"
             if test_txt.exists():
                 test_ids = {canonical_id(2007, i) for i in _read_ids(self.root, 2007, "test")}
+            elif self.require_test_list:
+                # Without the list we cannot keep VOC2007 test images out of train/val.
+                raise FileNotFoundError(
+                    f"{test_txt} not found: extract VOCtest_06-Nov-2007.tar into the same VOC2007/ "
+                    "folder, or pass require_test_list=False (then VOC2007 test is not protected).")
         for year, image_set in self.sets:
             base = self.root / f"VOC{year}"
             for file_id in _read_ids(self.root, year, image_set):
@@ -292,9 +301,8 @@ class VOC5Dataset(Dataset):
                     continue
                 seen.add(cid)
                 boxes, labels, difficult = parse_voc_xml(base / "Annotations" / f"{file_id}.xml")
-                if len(labels) == 0:
-                    self.info["images_without_5_classes"] += 1
-                    continue
+                # Images with none of our classes are kept here: val/test need them, because a false
+                # positive on a horse-only image must count against precision. Train drops them later.
                 records.append({"path": str(base / "JPEGImages" / f"{file_id}.jpg"), "id": cid,
                                 "boxes": boxes, "labels": labels, "difficult": difficult})
         records.sort(key=lambda r: r["id"])

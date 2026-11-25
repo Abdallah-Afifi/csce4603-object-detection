@@ -22,7 +22,7 @@ image 384x384 ─► Backbone (ResNet-18-style, from scratch) ─► Upsampling 
 decode: 3x3 max-pool peaks ─► top-100 ─► boxes ─► draw on image / video
 ```
 
-Comparison baseline: the same backbone and neck with a YOLO-v1-style **grid head** (24×24 cells, one box per cell).
+Comparison baseline: the same backbone and neck with a **grid head** (24×24 cells, one box per cell). It is our own implementation of the idea from YOLO v1 (Redmon et al. 2016), with no YOLO code or weights.
 
 ## Layout
 
@@ -52,7 +52,7 @@ Each module's docstring sets out the interface the other modules rely on. Tell t
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-python -m pytest -q          # about 1 minute on CPU; no dataset needed
+python -m pytest -q          # a few seconds on CPU; no dataset needed
 ```
 
 PASCAL VOC (2007 trainval + test, 2012 trainval) goes in `data/VOCdevkit/VOC2007` and `data/VOCdevkit/VOC2012`.
@@ -72,7 +72,7 @@ Re-running the same command resumes from `last.pt`. Each run writes `best.pt`, `
 |---|---|---|---|---|
 | A | `centernet_voc5.yaml` | CenterNet heatmap | yes | main model |
 | B | `centernet_voc5_noaug.yaml` | CenterNet heatmap | no | what does augmentation contribute? |
-| C | `grid_voc5.yaml` | Grid (YOLO-v1-style) | yes | what does the head design contribute? |
+| C | `grid_voc5.yaml` | Grid head (own code, YOLO-v1 idea) | yes | what does the head design contribute? |
 
 We report mAP@0.5, per-class AP, precision/recall, the confusion matrix and FPS on the VOC 2007 test set and on our own labelled video frames.
 

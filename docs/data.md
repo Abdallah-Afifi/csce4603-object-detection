@@ -34,7 +34,7 @@ Upload the `VOCdevkit` folder once as a private Kaggle dataset and share it with
 | Step | Rule | Why |
 |---|---|---|
 | Classes | keep person, car, bicycle, motorbike, bus (ids 0-4 in that order); every other object is ignored | the 5 classes in our plan |
-| Images | an image is used only if it has at least one of the 5 classes | images with only other classes teach nothing about ours |
+| Images | train uses an image only if it has at least one of the 5 classes; val and test keep every image | images with only other classes teach little in training, but evaluation must count false positives on them |
 | Duplicates | VOC 2012 re-uses some VOC 2007 images under the same number (`2007_000032`). Each image is used once | otherwise one photo can land in both train and val |
 | Test images | any image in the VOC 2007 test list is removed from train/val | the test set stays unseen |
 | Train / val | images sorted by id, shuffled with `seed`, 10% to val. Fixed by the seed; train and val never share an image | repeatable model selection |

@@ -48,7 +48,8 @@ def test_split_is_disjoint_complete_and_seeded(voc_root):
     ds_train = make(voc_root, "train")
     train, val = all_ids(ds_train), all_ids(make(voc_root, "val"))
     assert not set(train) & set(val)
-    n_split = len(train) + ds_train.info["images_only_difficult"] + len(val)
+    n_split = (len(train) + ds_train.info["images_only_difficult"]
+               + ds_train.info["images_without_5_classes"] + len(val))
     assert len(val) == round(0.1 * n_split)
     assert all_ids(make(voc_root, "val")) == val                  # same seed, same split
     assert all_ids(make(voc_root, "val", seed=1)) != val
@@ -68,7 +69,9 @@ def test_duplicates_and_test_images_are_removed(voc_root):
 def test_class_filter_and_difficult_handling(voc_root):
     train, val = make(voc_root, "train"), make(voc_root, "val")
     ids = all_ids(train) + all_ids(val)
-    assert "2007_000002" not in ids                   # only a dog
+    assert "2007_000002" not in all_ids(train)        # only a dog: no use for training
+    if "2007_000002" in all_ids(val):                 # ...but kept for evaluation, with no boxes
+        assert len(val.records[all_ids(val).index("2007_000002")]["labels"]) == 0
     for r in train.records:
         assert not r["difficult"].any()
     if "2007_000003" in all_ids(val):                 # only-difficult image: allowed in val
@@ -177,6 +180,7 @@ def test_tiny_boxes_dropped_in_train_but_kept_for_evaluation(tmp_path):
     ids = [f"{i:06d}" for i in range(1, 11)]
     (root / "VOC2007/ImageSets/Main/trainval.txt").write_text("\n".join(ids) + "\n")
     (root / "VOC2012/ImageSets/Main/trainval.txt").write_text("")
+    (root / "VOC2007/ImageSets/Main/test.txt").write_text("")
     for i in ids:   # 1000x500 image -> scale 0.384: the 3-px-wide person becomes ~1.2 px
         _write_image(root / "VOC2007", i, [("person", (10, 10, 12, 60), False),
                                            ("car", (100, 100, 400, 300), False)], (1000, 500))
@@ -185,3 +189,39 @@ def test_tiny_boxes_dropped_in_train_but_kept_for_evaluation(tmp_path):
         boxes = ds[0][1]["boxes"]
         assert len(boxes) == n_expected, split
         assert ((boxes[:, 2] > boxes[:, 0]) & (boxes[:, 3] > boxes[:, 1])).all()
+
+
+def test_val_and_test_keep_images_without_our_classes(tmp_path):
+    """A false positive on a dog-only image must count against precision, so evaluation splits
+    keep such images (with zero boxes); training drops them."""
+    from tests.fake_voc import _write_image
+    root = tmp_path / "VOCdevkit"
+    for year in (2007, 2012):
+        for sub in ("Annotations", "JPEGImages", "ImageSets/Main"):
+            (root / f"VOC{year}" / sub).mkdir(parents=True, exist_ok=True)
+    ids = [f"{i:06d}" for i in range(1, 21)]
+    (root / "VOC2007/ImageSets/Main/trainval.txt").write_text("\n".join(ids[:10]) + "\n")
+    (root / "VOC2007/ImageSets/Main/test.txt").write_text("\n".join(ids[10:]) + "\n")
+    for k, i in enumerate(ids):
+        objects = [("dog", (10, 10, 100, 100), False)] if k % 2 else [("car", (10, 10, 100, 100), False)]
+        _write_image(root / "VOC2007", i, objects, (200, 150))
+    kw = dict(sets=[(2007, "trainval")], input_size=384, val_fraction=0.5, seed=0)
+    train, val = D.VOC5Dataset(root, split="train", **kw), D.VOC5Dataset(root, split="val", **kw)
+    assert all(len(r["labels"]) for r in train.records)
+    assert len(train) + len(val) + train.info["images_without_5_classes"] == 10
+    assert not {r["id"] for r in train.records} & {r["id"] for r in val.records}
+    test = D.VOC5Dataset(root, sets=[(2007, "test")], split="test", input_size=384)
+    assert len(test) == 10                              # every test image, 5 of them dog-only
+    empty = [test[i][1] for i in range(10) if len(test[i][1]["labels"]) == 0]
+    assert len(empty) == 5 and all(t["boxes"].shape == (0, 4) and t["difficult"].shape == (0,) for t in empty)
+
+
+def test_missing_test_list_is_an_error_not_a_silent_leak(voc_root, tmp_path):
+    import shutil
+    root = tmp_path / "VOCdevkit"
+    shutil.copytree(voc_root, root)
+    (root / "VOC2007/ImageSets/Main/test.txt").unlink()
+    with pytest.raises(FileNotFoundError, match="test.txt"):
+        make(root, "train")
+    ids = all_ids(D.VOC5Dataset(root, sets=SETS, split="train", input_size=384, require_test_list=False))
+    assert "2007_000033" in ids                        # without the list the test image leaks: why it is an error
