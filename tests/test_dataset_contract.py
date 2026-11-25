@@ -12,14 +12,17 @@ from src.config import load_config
 cfg = load_config(Path(__file__).resolve().parents[1] / "configs/centernet_voc5.yaml")
 ds_mod = pytest.importorskip("src.dataset")
 root = Path(__file__).resolve().parents[1] / cfg["data"]["voc_root"]
-pytestmark = pytest.mark.skipif(not hasattr(ds_mod, "VOC5Dataset") or not root.exists(),
+# Use whichever of the configured VOC years are downloaded (e.g. only 2007 while 2012 is still coming).
+SETS = [tuple(s) for s in cfg["data"]["train_sets"]
+        if (root / f"VOC{s[0]}" / "ImageSets" / "Main" / f"{s[1]}.txt").exists()]
+pytestmark = pytest.mark.skipif(not hasattr(ds_mod, "VOC5Dataset") or not SETS,
                                 reason="VOC5Dataset not implemented or VOC not downloaded")
 
 
 @pytest.mark.parametrize("split,augment", [("train", True), ("val", False)])
 def test_voc5_dataset_contract(split, augment):
     assert list(ds_mod.CLASSES) == cfg["classes"]
-    sets = [tuple(s) for s in cfg["data"]["train_sets"]]
+    sets = SETS
     ds = ds_mod.VOC5Dataset(root, sets=sets, split=split, input_size=384, augment=augment,
                             val_fraction=0.1, seed=0)
     assert len(ds) > 0
@@ -36,8 +39,8 @@ def test_voc5_dataset_contract(split, augment):
 
 
 def test_train_and_val_do_not_overlap():
-    sets = [tuple(s) for s in cfg["data"]["train_sets"]]
-    kw = dict(sets=sets, input_size=384, augment=False, val_fraction=0.1, seed=0)
+    sets = SETS
+    kw = dict(sets=SETS, input_size=384, augment=False, val_fraction=0.1, seed=0)
     train_ids = {ds_mod.VOC5Dataset(root, split="train", **kw)[i][1]["image_id"] for i in range(50)}
     val = ds_mod.VOC5Dataset(root, split="val", **kw)
     val_ids = {val[i][1]["image_id"] for i in range(min(50, len(val)))}

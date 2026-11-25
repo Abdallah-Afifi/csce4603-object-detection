@@ -169,6 +169,15 @@ def parse_voc_xml(path: Path):
             np.array(difficult, bool))
 
 
+def xml_image_size(path: Path):
+    """(width, height) recorded in a VOC annotation, or None if missing."""
+    root = ET.parse(path).getroot()
+    try:
+        return int(root.findtext("size/width")), int(root.findtext("size/height"))
+    except (TypeError, ValueError):
+        return None
+
+
 def _read_ids(root: Path, year: int, image_set: str) -> list[str]:
     path = root / f"VOC{year}" / "ImageSets" / "Main" / f"{image_set}.txt"
     if not path.exists():
@@ -301,11 +310,13 @@ class VOC5Dataset(Dataset):
                     self.info["test_images_excluded"] += 1
                     continue
                 seen.add(cid)
-                boxes, labels, difficult = parse_voc_xml(base / "Annotations" / f"{file_id}.xml")
+                xml_path = base / "Annotations" / f"{file_id}.xml"
+                boxes, labels, difficult = parse_voc_xml(xml_path)
                 # Images with none of our classes are kept here: val/test need them, because a false
                 # positive on a horse-only image must count against precision. Train drops them later.
                 records.append({"path": str(base / "JPEGImages" / f"{file_id}.jpg"), "id": cid,
-                                "boxes": boxes, "labels": labels, "difficult": difficult})
+                                "boxes": boxes, "labels": labels, "difficult": difficult,
+                                "size": xml_image_size(xml_path)})
         records.sort(key=lambda r: r["id"])
         return records
 
@@ -318,6 +329,12 @@ class VOC5Dataset(Dataset):
         img = cv2.imread(r["path"], cv2.IMREAD_COLOR)
         if img is None:
             raise FileNotFoundError(r["path"])
+        size = r.get("size")
+        if size and size[0] > 0 and (img.shape[1], img.shape[0]) != tuple(size):
+            # OpenCV applies EXIF rotation; if the labels were drawn on the stored (unrotated) pixels,
+            # every box would land in the wrong place. All 9,963 VOC2007 images match; phone photos may not.
+            raise ValueError(f"{r['path']}: image is {img.shape[1]}x{img.shape[0]} but its annotation says "
+                             f"{size[0]}x{size[1]} (EXIF rotation?). Re-save the photo upright and relabel it.")
         return img, r["boxes"].copy(), r["labels"].copy(), r["difficult"].copy()
 
     def __getitem__(self, idx):

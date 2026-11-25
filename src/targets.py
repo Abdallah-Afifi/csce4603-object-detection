@@ -122,7 +122,7 @@ class CenterNetTargets:
 
 
 # ----------------------------------------------------------------------------------------------
-# Grid (YOLO-v1-style) targets: the comparison baseline
+# Grid-head targets (idea from YOLO v1): the comparison baseline
 # ----------------------------------------------------------------------------------------------
 
 class GridTargets:

@@ -60,7 +60,7 @@ def centernet_loss(out: dict, targets: dict, weights: dict | None = None):
 
 
 def grid_loss(out: dict, targets: dict, weights: dict | None = None):
-    """YOLO-v1-style loss, with BCE/CE in place of squared error for objectness and class.
+    """Grid-head loss following YOLO v1's formulation, with BCE/CE in place of squared error for objectness and class.
 
     obj  : BCE on every cell; empty cells down-weighted by ``noobj`` (most cells are empty)
     box  : squared error on centre (in-cell) and sqrt-size, owning cells only, weighted by ``coord``

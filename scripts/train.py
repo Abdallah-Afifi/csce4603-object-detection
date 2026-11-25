@@ -206,6 +206,10 @@ def train(cfg: dict, out_dir: str | Path, resume: bool = True, device: str | Non
     train_ds, val_ds = build_datasets(cfg)
     if len(train_ds) == 0:
         raise SystemExit("Training dataset is empty")
+    for name, ds in (("train", train_ds), ("val", val_ds)):
+        info = getattr(ds, "info", None)
+        if info:  # duplicates / test images excluded / images without our classes, for the report
+            log(f"{name} data: {dict(sorted(info.items()))}")
     train_loader = make_loader(train_ds, encoder, batch_size, workers, True, dev, seed)
     val_loader = make_loader(val_ds, encoder, batch_size, workers, False, dev, seed)
     iters_per_epoch = len(train_loader) if max_iters is None else min(max_iters, len(train_loader))

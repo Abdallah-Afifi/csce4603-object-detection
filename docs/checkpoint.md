@@ -30,6 +30,6 @@ Run the notebook once before the lab so the figures in `docs/figures/` already e
 
 - **Why train from scratch, and how?** The handout requires it. We use a deep stem, zero-initialised residual branches, warm-up, BatchNorm, a long schedule and EMA.
 - **Why CenterNet, not YOLO?** YOLO is explicitly not allowed as a pre-existing model. CenterNet has no anchors, a simple decode (3×3 max-pool instead of NMS) and a published design. We wrote every layer ourselves.
-- **What is the comparison?** Run A (heatmap head) vs run C (YOLO-v1-style grid head on the same backbone) vs run B (A without augmentation). All three use the same data and epoch budget.
+- **What is the comparison?** Run A (heatmap head) vs run C (our own grid head, idea from YOLO v1, same backbone) vs run B (A without augmentation). All three use the same data and epoch budget.
 - **What does mAP@0.5 mean?** It is the area under each class's precision–recall curve (a box counts if IoU ≥ 0.5), averaged over the 5 classes.
 - **What is next?** Finish the runs, video prediction with overlay and FPS, precision/recall and the confusion matrix, our own campus videos as the test video, and failure cases.

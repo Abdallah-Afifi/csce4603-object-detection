@@ -18,7 +18,7 @@ Owner: Abdallah Afifi. Code: `src/model.py`, `src/targets.py`, `src/losses.py`, 
    - L1 loss on `wh` and `offset`, at centre cells only.
    - Total = 1.0·heatmap + 0.1·wh + 1.0·offset.
 6. **Decoding.** Take the sigmoid of the heatmap. A cell is a detection if it is the maximum of its 3×3 neighbourhood, which replaces NMS. Keep the top 100 peaks, then build boxes from `wh` and `offset`.
-7. **Comparison baseline: grid head (YOLO v1 style).** This uses the same backbone and the same neck design (stopping at stride 16), with a 24×24 grid. The cell that contains an object's centre predicts one box (centre in the cell, sqrt of the size), an objectness score and the class; outputs then go through NMS. If two objects fall in the same cell, only one can be learned. The training log counts these as `grid_collisions`, a concrete number for the report.
+7. **Comparison baseline: our own grid head (idea from YOLO v1, no YOLO code or weights).** This uses the same backbone and the same neck design (stopping at stride 16), with a 24×24 grid. The cell that contains an object's centre predicts one box (centre in the cell, sqrt of the size), an objectness score and the class; outputs then go through NMS. If two objects fall in the same cell, only one can be learned. The training log counts these as `grid_collisions`, a concrete number for the report.
 
 ## Training recipe
 

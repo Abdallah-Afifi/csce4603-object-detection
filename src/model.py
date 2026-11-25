@@ -10,6 +10,7 @@ Architecture (both detectors share the same backbone and neck):
       -> Head:
            CenterNet : stride 4 (96x96)  -> heatmap [B,5,96,96], wh [B,2,..], offset [B,2,..]
            Grid      : stride 16 (24x24) -> obj [B,1,..], box [B,4,..], cls [B,5,..]
+                       (our own baseline head; the grid idea is from YOLO v1, no YOLO code or weights)
 
 Every detector exposes the same API, so training and prediction code works with either:
     out = model(images)                                  # dict of raw head outputs
@@ -212,9 +213,10 @@ class CenterNet(_Detector):
 
 
 class GridDetector(_Detector):
-    """Comparison baseline in the style of YOLO v1 (Redmon et al. 2016): split the image into a
-    grid and let the cell containing an object's centre predict one box, an objectness score and
-    the class. Uses the same backbone and neck as CenterNet, so the comparison isolates the head."""
+    """Comparison baseline: our own grid head, using the idea of YOLO v1 (Redmon et al. 2016),
+    with no YOLO code or weights. The image is split into a grid; the cell containing an object's
+    centre predicts one box, an objectness score and the class. Same backbone and neck design as
+    CenterNet, so the comparison isolates the head."""
 
     def __init__(self, num_classes=5, widths=(64, 128, 256, 512), depths=(2, 2, 2, 2),
                  neck_channels=128, head_channels=64, grid_stride=16):

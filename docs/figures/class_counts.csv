@@ -1,0 +1,11 @@
+split,class,images,objects,difficult_objects
+train,person,1791,4205,0
+train,car,646,1136,0
+train,bicycle,217,314,0
+train,motorbike,214,295,0
+train,bus,168,204,0
+val,person,223,545,60
+val,car,72,148,34
+val,bicycle,27,45,6
+val,motorbike,32,52,8
+val,bus,22,33,8

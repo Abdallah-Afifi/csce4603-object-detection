@@ -8,7 +8,7 @@ What we show: the data loads correctly, the model builds, training runs, and the
 
 ### Abdallah: model and training
 - [x] Backbone + upsampling neck + CenterNet heads (`src/model.py`)
-- [x] Grid-head (YOLO-v1-style) baseline for the comparison
+- [x] Grid-head baseline (own code, idea from YOLO v1) for the comparison
 - [x] Target encoding, focal + L1 losses (`src/targets.py`, `src/losses.py`)
 - [x] Training script: AMP, EMA, warm-up + cosine, resume, history.csv, loss curve (`scripts/train.py`)
 - [x] Tests: encode→decode round trip, overfit check, train + resume (`tests/`)

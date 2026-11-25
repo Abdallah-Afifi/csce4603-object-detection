@@ -235,3 +235,17 @@ def test_2007_only_runs_do_not_need_the_test_list(voc_root, tmp_path):
     (root / "VOC2007/ImageSets/Main/test.txt").unlink()
     ds = D.VOC5Dataset(root, sets=[(2007, "trainval")], split="train", input_size=384)
     assert len(ds) > 0
+
+
+def test_image_that_does_not_match_its_annotation_size_is_rejected(voc_root, tmp_path):
+    """A phone photo rotated by EXIF loads with swapped width/height; its boxes would be wrong."""
+    import shutil
+    root = tmp_path / "VOCdevkit"
+    shutil.copytree(voc_root, root)
+    ds = make(root, "train")
+    path = ds.records[0]["path"]
+    img = cv2.imread(path)
+    cv2.imwrite(path, cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE))   # now W x H != annotation
+    with pytest.raises(ValueError, match="EXIF"):
+        ds[0]
+    ds[1]                                                          # others still load

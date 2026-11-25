@@ -1,4 +1,4 @@
-# Run C: same backbone/neck/data as A, but a YOLO-v1-style grid head (24x24 cells at stride 16).
+# Run C: same backbone/neck/data as A, but our own grid head (idea from YOLO v1; 24x24 cells at stride 16).
 base: centernet_voc5.yaml
 model:
   head: grid
