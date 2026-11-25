@@ -1,7 +1,7 @@
 """Images and objects per class in each split -> docs/figures/. Owner: Mariam Abdelaal
 
     python scripts/dataset_stats.py --config configs/centernet_voc5.yaml
-    python scripts/dataset_stats.py --config configs/centernet_voc5.yaml --set data.voc_root=/kaggle/input/voc
+    python scripts/dataset_stats.py --config configs/centernet_voc5.yaml --set data.voc_root=/path/to/VOCdevkit
     python scripts/dataset_stats.py --fake      # no VOC needed: runs on a generated VOC-format folder
 
 Writes class_counts.csv, class_counts.md (table for the README / report) and class_counts.png.

@@ -25,9 +25,9 @@ mkdir -p data && cd data
 tar -xf VOCtrainval_06-Nov-2007.tar && tar -xf VOCtest_06-Nov-2007.tar && tar -xf VOCtrainval_11-May-2012.tar
 ```
 
-## 2. Sharing on Kaggle
+## 2. Optional: sharing on Kaggle
 
-Upload the `VOCdevkit` folder once as a private Kaggle dataset and share it with the team (Datasets → New Dataset → upload, then Settings → Sharing). The training notebook finds the folder that contains both `VOC2007/` and `VOC2012/` under `/kaggle/input` by itself. Scripts take the path with `--set data.voc_root=/kaggle/input/<dataset>/VOCdevkit`.
+We train on the laptop, where VOC is in `data/VOCdevkit`. Only if someone trains on Kaggle (optional, see `docs/training.md`): upload the `VOCdevkit` folder once as a private Kaggle dataset and share it with the team (Datasets → New Dataset → upload, then Settings → Sharing). The training notebook finds the folder that contains both `VOC2007/` and `VOC2012/` under `/kaggle/input` by itself. Scripts take the path with `--set data.voc_root=/kaggle/input/<dataset>/VOCdevkit`.
 
 ## 3. What the loader does
 

@@ -5,7 +5,7 @@ Usage (from the repo root):
     python scripts/train.py --config configs/smoke_synthetic.yaml --out runs/smoke   # no data needed
     python scripts/train.py --config ... --out ... --set train.epochs=60 train.batch_size=16
 
-Re-running the same command resumes from <out>/last.pt (Kaggle/Colab sessions time out), unless
+Re-running the same command resumes from <out>/last.pt (after a crash, sleep or notebook timeout), unless
 --no-resume is given.
 
 Writes to <out>/:

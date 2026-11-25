@@ -35,7 +35,7 @@ Owner: Abdallah Afifi. Code: `src/model.py`, `src/targets.py`, `src/losses.py`, 
 ## Running
 
 ```bash
-# 0. Pipeline check without any dataset (about 1 minute on a laptop)
+# 0. Pipeline check without any dataset (well under a minute on a laptop)
 python scripts/train.py --config configs/smoke_synthetic.yaml --out runs/smoke
 
 # 1. Can the model memorise 8 real images? Saves docs/figures/overfit_check.png
@@ -54,13 +54,37 @@ python scripts/model_summary.py --config configs/centernet_voc5.yaml
 Any config value can be overridden: `--set train.epochs=60 train.batch_size=16`.
 Re-running the same command, with the same `--set` values, resumes from `runs/<name>/last.pt`. A changed schedule (epochs, batch size, learning rate) is refused unless you pass `--allow-config-change`.
 
-## On Kaggle (free GPU)
+## Where we train: Abdallah's laptop (main)
 
-Use `notebooks/train_kaggle.ipynb`. Set the accelerator to GPU T4 ×2 or P100 and turn the internet on. Sessions last up to 12 h and the GPU quota is about 30 h a week, so the three runs need planning:
+The runs train on an Apple M5 Pro laptop GPU (PyTorch MPS backend), which is about as fast as Kaggle's free T4. Measured speeds:
+
+| Run | Training speed | 120 epochs on VOC 07+12 (incl. validation) |
+|---|---|---|
+| A, CenterNet | about 91 images/s | about 3.5–4 h |
+| B, CenterNet without augmentation | about 91 images/s | about 3.5–4 h |
+| C, grid head | about 145 images/s | about 2.5 h |
+
+Run them one after another, overnight, with the laptop plugged in. `caffeinate -i` keeps macOS awake, and an interrupted run resumes when you re-run the same command:
+
+```bash
+caffeinate -i python scripts/train.py --config configs/centernet_voc5.yaml --out runs/A_centernet
+```
 
 - Run A first. It is the main model and the source of the demo weights.
 - **All three runs must use the same epoch count**, because the comparison is only fair at the same budget. If time is short, train A, B and C for 60 epochs each and give A a longer run separately for the final demo weights. Don't compare a 120-epoch A against 60-epoch B and C.
-- To continue after a timeout: open the notebook's saved output version, add it as an input, copy its `runs/<name>` folder back to `/kaggle/working/runs/`, and run the same command again.
+- PASCAL VOC is already in `data/VOCdevkit` on the laptop (see `docs/data.md` to download it elsewhere).
+
+## Optional: Kaggle (free GPU) for parallel runs
+
+`notebooks/train_kaggle.ipynb` trains the same code on a free Kaggle GPU. Use it to run B or C at the same time as A on the laptop, for longer runs or COCO data for the bonus, or when a teammate needs to train without the laptop.
+
+- **Setup:** set the accelerator to GPU T4 ×2 or P100, turn the internet on, and add a VOC dataset whose `VOC2007/` (trainval and test extracted together) and `VOC2012/` sit in one folder.
+- **Limits:** sessions last up to 12 h and the GPU quota is about 30 h a week.
+- **Resuming after a timeout:**
+  1. Open the notebook's saved output version and add it as an input.
+  2. Set `RESUME_FROM` to its `runs/<name>` folder.
+  3. Run the same command again.
+- **Use the same config and epochs as the laptop runs,** so the results are comparable.
 
 ## For Youssef: using the trained model
 

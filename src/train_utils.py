@@ -139,7 +139,7 @@ def worker_init(worker_id: int) -> None:
 
 
 def atomic_save(obj, path: Path) -> None:
-    """Write to a temp file then rename, so a Kaggle/Colab timeout mid-save never corrupts the
+    """Write to a temp file then rename, so a crash or notebook timeout mid-save never corrupts the
     only checkpoint we have."""
     path = Path(path)
     tmp = path.with_suffix(path.suffix + ".tmp")

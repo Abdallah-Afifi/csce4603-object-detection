@@ -39,7 +39,7 @@ src/        dataset.py       VOC loader + augmentation                         (
 scripts/    train.py, overfit_check.py, model_summary.py, plot_runs.py         (Abdallah)
             predict.py (image / video / webcam, --show), evaluate.py (test-set metrics)  (Youssef)
             show_samples.py, dataset_stats.py                                  (Mariam)
-notebooks/  train_kaggle.ipynb: training on a free Kaggle GPU
+notebooks/  checkpoint_demo.ipynb (25 Nov demo, saved with outputs); train_kaggle.ipynb (optional: train on a free Kaggle GPU)
 tests/      pytest suite (runs on every push via GitHub Actions)
 docs/       plan, tasks, training guide, figures
 data/ runs/ videos/   not committed (datasets, checkpoints, our videos)
@@ -66,7 +66,7 @@ python scripts/evaluate.py runs/A_centernet runs/B_noaug runs/C_grid --out docs/
 python scripts/predict.py --weights runs/A_centernet/best.pt --source clip.mp4 --show
 ```
 
-Re-running the same command resumes from `last.pt`. Each run writes `best.pt`, `last.pt`, `history.csv` and `loss_curve.png`. See the [training guide](docs/training.md) for Kaggle and the comparison runs.
+Re-running the same command resumes from `last.pt`. Each run writes `best.pt`, `last.pt`, `history.csv` and `loss_curve.png`. We train on a laptop GPU (Apple M5 Pro, about 3.5–4 h per 120-epoch run). Kaggle is an optional extra for parallel runs. See the [training guide](docs/training.md).
 
 ## Experiments (comparison section)
 

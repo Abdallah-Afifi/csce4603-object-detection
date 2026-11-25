@@ -1,7 +1,7 @@
 """Draw ground-truth boxes on (augmented) dataset samples -> docs/figures/. Owner: Mariam Abdelaal
 
     python scripts/show_samples.py --config configs/centernet_voc5.yaml
-    python scripts/show_samples.py --config configs/centernet_voc5.yaml --set data.voc_root=/kaggle/input/voc
+    python scripts/show_samples.py --config configs/centernet_voc5.yaml --set data.voc_root=/path/to/VOCdevkit
     python scripts/show_samples.py --fake       # no VOC needed: runs on a generated VOC-format folder
 
 Each row is one training image: the first panel is the letterboxed image without augmentation,

@@ -12,13 +12,13 @@ What we show: the data loads correctly, the model builds, training runs, and the
 - [x] Target encoding, focal + L1 losses (`src/targets.py`, `src/losses.py`)
 - [x] Training script: AMP, EMA, warm-up + cosine, resume, history.csv, loss curve (`scripts/train.py`)
 - [x] Tests: encode→decode round trip, overfit check, train + resume (`tests/`)
-- [x] Kaggle training notebook (`notebooks/train_kaggle.ipynb`)
+- [x] Kaggle training notebook (`notebooks/train_kaggle.ipynb`, optional; the main runs train on the laptop)
 - [x] Add Mariam and Youssef as collaborators
-- [x] When `VOC5Dataset` lands: `overfit_check.py` on real images, then start run A on Kaggle
+- [x] When `VOC5Dataset` lands: `overfit_check.py` on real images, then a first training run (checkpoint run on VOC 2007, on the laptop)
 - [x] Checkpoint material: `model_summary.py` output, overfit figure, loss curve so far
 
 ### Mariam: data
-- [ ] VOC 2007 trainval + test and VOC 2012 trainval downloaded; shared as one Kaggle dataset
+- [x] VOC 2007 trainval + test and VOC 2012 trainval downloaded (on the laptop, `data/VOCdevkit`); a Kaggle copy only if we use Kaggle
 - [x] `VOC5Dataset` following the interface in `src/dataset.py`; tested on a generated VOC-format folder; run `pytest tests/test_dataset_contract.py` once real VOC is downloaded
 - [x] Augmentation (flip, crop, colour jitter), with boxes kept correct
 - [x] `scripts/show_samples.py` figure of augmented samples with boxes (checkpoint figure)
